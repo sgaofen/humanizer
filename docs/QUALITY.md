@@ -15,10 +15,14 @@ Evaluation set: `eval_daily/` — 39 cases (31 English, 8 Chinese), drafts writt
 | Mac, MLX mixed 4/6-bit — **not released** | 0.00 | 0 | 1.18 | 62 | 0 | 0 | 0 / 16 |
 | Mac, MLX 4-bit linear layers only, embeddings kept bf16 — **not released** | 0.00 | 0 | 1.17 | 62 | 0 | 0 | 0 / 16 |
 | Mac, MLX 6-bit (6.5 bpw, 5.7 GB) — **not released** | 0.13 | 0 | 1.02 | 17 | 24 | 21 | 9 / 16 |
+| cluster, llama.cpp GGUF Q8_0 via `llama-server` (no anti-copy guard; plain resample when copy > 0.35 — what Ollama / LM Studio users get) | 0.24 | 7 / 62 | 1.00 | 7 | 20 | 25 | 12 / 16 |
+| cluster, llama.cpp GGUF Q4_K_M — **not released** | 0.00 | 0 | ≈2.4 (runaway) | 53 | 0 | 0 | 0 / 16 |
 
 * MLX bf16 on the Mac reproduces the cluster result within judge noise on critical errors; it shows a few more "minor" verdicts (hedging shifts) — likely sampling variance plus numerics, not a deployment bug.
 * 8-bit is the smallest usable quantisation: within noise of bf16 on every metric.
 * Plain 4-bit, mixed 4/6-bit, and 4-bit with embeddings left in bf16 all produce gibberish, so the damage is in the 4-bit linear layers themselves, not the embeddings. 6-bit is coherent but nearly triples critical fidelity errors (17 vs 6–9). For this model on MLX, 8-bit is the floor; no 4- or 6-bit build is published.
+* **GGUF Q8_0 is fine**: critical errors and Chinese pass rate are within judge noise of bf16. Its higher copy rate (0.24 median, 7 samples above 0.35) is the missing decoder-side guard, not the quantisation — `llama-server` / Ollama / LM Studio cannot apply the logits penalty, so the eval only resampled plainly. `humanizer/gguf_infer.py` (llama-cpp-python) restores the guard.
+* **GGUF Q4_K_M is broken the same way MLX 4-bit is**: outputs drift into digit runs and repeated fragments (median 442 words for ~180-word drafts, copy ≈ 0, 53/62 critical, 0/16 Chinese). Confirmed on two backends (llama-server and llama-cpp-python 0.3.35). It is not published. Q5_K_M, Q6_K and a Q4_K_M variant that keeps Gemma 4's per-layer embeddings / altup / laurel / embedding / output tensors at 8-bit are being evaluated; results will be added here.
 
 ## Reading the six critical errors (cluster run)
 

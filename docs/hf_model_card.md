@@ -16,7 +16,7 @@ library_name: transformers
 
 # humanizer-gemma-4-e4b
 
-One repo, every variant: transformers bf16 at the root; llama.cpp GGUF (Q8_0 / Q5_K_M / Q4_K_M / bf16) under `gguf/`. Samples, code and the evaluation set: [github.com/sgaofen/humanizer](https://github.com/sgaofen/humanizer).
+One repo, every variant: transformers bf16 at the root; llama.cpp GGUF (Q8_0 / bf16; Q5_K_M and Q6_K pending evaluation, Q4_K_M withheld because 4-bit degenerates on this model) under `gguf/`. Samples, code and the evaluation set: [github.com/sgaofen/humanizer](https://github.com/sgaofen/humanizer).
 
 Rewrites AI-written drafts so they read like a person wrote them, keeping every fact, number, name and date. Fine-tune of `google/gemma-4-E4B`.
 
@@ -37,7 +37,7 @@ Rewrites AI-written drafts so they read like a person wrote them, keeping every 
 | Chinese cases passing judge | 10 / 16 | 4 / 16 |
 | Originality.ai "human" *(external check only)* | 79 % | 57 % |
 
-GGUF quants (Q8_0 / Q5_K_M / Q4_K_M / bf16) are in the `gguf/` folder of this repo; their quality on the same set is in `docs/QUALITY.md` of the GitHub repo. MLX 4-/6-bit quantisation of this model is not usable (Gemma 4 PLE layers); use the GGUF quants on a Mac.
+GGUF files (Q8_0 / bf16; Q5_K_M and Q6_K pending evaluation, Q4_K_M withheld — 53/62 critical errors, gibberish) are in the `gguf/` folder of this repo; their quality on the same set is in `docs/QUALITY.md` of the GitHub repo. MLX 4-/6-bit quantisation of this model is not usable (Gemma 4 PLE layers); use the GGUF quants on a Mac.
 
 Known failure modes: ~1 in 10 outputs has a meaning flip (who did what, ordered vs received, a metric renamed); subject lines/greetings occasionally dropped; Chinese weaker than English; short drafts (< 120 words) less reliable. **Proofread numbers, dates and the direction of every claim.**
 

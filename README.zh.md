@@ -112,7 +112,7 @@
 
 ### GGUF(llama.cpp、Ollama、LM Studio、llama-cpp-python)— 推荐
 
-文件在 `jialinyyzz/humanizer-gemma-4-e4b` 的 `gguf/` 目录:`Q8_0`(8.0 GB)、`bf16`(14.9 GB)。**Q4_K_M 不发布:和 MLX 4bit 一样,这个模型量化到 4bit 会退化成乱码**(严重错 53/62,见 `docs/QUALITY.md`)。Q5_K_M / Q6_K 评测中,过关再加。
+文件在 `jialinyyzz/humanizer-gemma-4-e4b` 的 `gguf/` 目录:`Q8_0`(8.0 GB)、`Q6_K`(6.2 GB)、`bf16`(14.9 GB)。Q8_0 和 Q6_K 的事实错都在 bf16 的噪声带内。**Q5_K_M 和 Q4_K_M 不发布**:Q5_K_M 严重错翻近三倍(17/62 对 6),Q4_K_M 和 MLX 4bit 一样退化成乱码(见 `docs/QUALITY.md`)。
 
 ```bash
 pip install llama-cpp-python        # Mac 加 CMAKE_ARGS="-DGGML_METAL=on",N 卡加 "-DGGML_CUDA=on"
@@ -148,7 +148,7 @@ python humanizer/hf_infer.py --model jialinyyzz/humanizer-gemma-4-e4b draft.txt
 
 ## 权重
 
-* `jialinyyzz/humanizer-gemma-4-e4b` — 一个仓库放全部变体:根目录是合并后的 bf16(transformers 格式,SFT + DPO 已合入底座),`gguf/` 目录是 llama.cpp GGUF(Q8_0、bf16;Q5_K_M/Q6_K 评测中,Q4_K_M 因乱码不发)和 `prompt_format.json`。
+* `jialinyyzz/humanizer-gemma-4-e4b` — 一个仓库放全部变体:根目录是合并后的 bf16(transformers 格式,SFT + DPO 已合入底座),`gguf/` 目录是 llama.cpp GGUF(Q8_0、Q6_K、bf16;Q5_K_M、Q4_K_M 因 6bit 以下忠实度崩塌不发)和 `prompt_format.json`。
 
 均派生自 `google/gemma-4-E4B`,受 Gemma 使用条款约束(见 `NOTICE`)。本仓库代码为 Apache-2.0。
 

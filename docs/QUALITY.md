@@ -17,12 +17,19 @@ Evaluation set: `eval_daily/` — 39 cases (31 English, 8 Chinese), drafts writt
 | Mac, MLX 6-bit (6.5 bpw, 5.7 GB) — **not released** | 0.13 | 0 | 1.02 | 17 | 24 | 21 | 9 / 16 |
 | cluster, llama.cpp GGUF Q8_0 via `llama-server` (no anti-copy guard; plain resample when copy > 0.35 — what Ollama / LM Studio users get) | 0.24 | 7 / 62 | 1.00 | 7 | 20 | 25 | 12 / 16 |
 | cluster, llama.cpp GGUF Q4_K_M — **not released** | 0.00 | 0 | ≈2.4 (runaway) | 53 | 0 | 0 | 0 / 16 |
+| cluster, llama.cpp GGUF Q8_0, llama-cpp-python with the anti-copy guard (`gguf_infer.py` path) | 0.16 | 0 / 62 | 1.00 | 7 | 18 | 37 | 12 / 16 |
+| cluster, llama.cpp GGUF Q6_K, with guard | 0.16 | 0 / 62 | 1.00 | 7 | 24 | 31 | 13 / 16 |
+| cluster, llama.cpp GGUF Q6_K via `llama-server` (no guard) | 0.20 | 4 / 62 | 1.00 | 11 | 27 | 24 | 14 / 16 |
+| cluster, llama.cpp GGUF Q5_K_M, with guard — **not released** | 0.17 | 1 / 62 | 1.00 | 17 | 29 | 16 | 9 / 16 |
+| cluster, llama.cpp GGUF Q5_K_M via `llama-server` — **not released** | 0.17 | 2 / 62 | 1.00 | 11 | 24 | 27 | 10 / 16 |
+| cluster, GGUF Q4_K_M with per-layer embeddings / altup / embedding / output tensors kept at Q8_0 — **not released** | 0.17 | 3 / 62 | 1.00 | 24 | 20 | 18 | 9 / 16 |
 
 * MLX bf16 on the Mac reproduces the cluster result within judge noise on critical errors; it shows a few more "minor" verdicts (hedging shifts) — likely sampling variance plus numerics, not a deployment bug.
 * 8-bit is the smallest usable quantisation: within noise of bf16 on every metric.
 * Plain 4-bit, mixed 4/6-bit, and 4-bit with embeddings left in bf16 all produce gibberish, so the damage is in the 4-bit linear layers themselves, not the embeddings. 6-bit is coherent but nearly triples critical fidelity errors (17 vs 6–9). For this model on MLX, 8-bit is the floor; no 4- or 6-bit build is published.
 * **GGUF Q8_0 is fine**: critical errors and Chinese pass rate are within judge noise of bf16. Its higher copy rate (0.24 median, 7 samples above 0.35) is the missing decoder-side guard, not the quantisation — `llama-server` / Ollama / LM Studio cannot apply the logits penalty, so the eval only resampled plainly. `humanizer/gguf_infer.py` (llama-cpp-python) restores the guard.
-* **GGUF Q4_K_M is broken the same way MLX 4-bit is**: outputs drift into digit runs and repeated fragments (median 442 words for ~180-word drafts, copy ≈ 0, 53/62 critical, 0/16 Chinese). Confirmed on two backends (llama-server and llama-cpp-python 0.3.35). It is not published. Q5_K_M, Q6_K and a Q4_K_M variant that keeps Gemma 4's per-layer embeddings / altup / laurel / embedding / output tensors at 8-bit are being evaluated; results will be added here.
+* **GGUF Q4_K_M is broken the same way MLX 4-bit is**: outputs drift into digit runs and repeated fragments (median 442 words for ~180-word drafts, copy ≈ 0, 53/62 critical, 0/16 Chinese). Confirmed on two backends (llama-server and llama-cpp-python 0.3.35). It is not published. Keeping Gemma 4's per-layer embedding / altup / embedding / output tensors at 8-bit and quantising only the attention and MLP linears to 4-bit removes the gibberish (outputs are coherent, normal length) but still quadruples critical errors (24 vs 6), so 4-bit linears alone already damage fidelity.
+* **Q6_K is the smallest release**: 7/62 critical and 13/16 Chinese with the guard — within noise of bf16 and Q8_0 — at 6.2 GB. **Q5_K_M is withheld**: 17/62 critical with the guard (11 without), the same collapse pattern as MLX 6-bit. The published GGUF set is therefore Q8_0, Q6_K and bf16.
 
 ## Reading the six critical errors (cluster run)
 

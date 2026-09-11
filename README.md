@@ -111,7 +111,7 @@ One English and one Chinese example; more in [docs/samples.md](docs/samples.md).
 
 ### GGUF (llama.cpp, Ollama, LM Studio, llama-cpp-python) — recommended
 
-Files in the `gguf/` folder of `jialinyyzz/humanizer-gemma-4-e4b`: `Q8_0` (8.0 GB) and `bf16` (14.9 GB). **Q4_K_M is not published: like the MLX 4-bit builds it degenerates into gibberish on this model** (53/62 critical errors, see `docs/QUALITY.md`). Q5_K_M / Q6_K are being evaluated and will be added if they hold up.
+Files in the `gguf/` folder of `jialinyyzz/humanizer-gemma-4-e4b`: `Q8_0` (8.0 GB), `Q6_K` (6.2 GB) and `bf16` (14.9 GB). Q8_0 and Q6_K are within judge noise of bf16 on fidelity. **Q5_K_M and Q4_K_M are not published**: Q5_K_M triples critical fidelity errors (17/62 vs 6) and Q4_K_M degenerates into gibberish on this model, like the MLX 4-bit builds (see `docs/QUALITY.md`).
 
 ```bash
 pip install llama-cpp-python        # CMAKE_ARGS="-DGGML_METAL=on" (Mac) or "-DGGML_CUDA=on"
@@ -147,7 +147,7 @@ Generation stops at EOS. Sampling: temperature 0.85, top-p 0.95.
 
 ## Weights
 
-* `jialinyyzz/humanizer-gemma-4-e4b` — one repo holds every variant: merged bf16 in transformers format at the root (SFT + DPO merged into the base), and llama.cpp GGUF files (Q8_0, bf16; Q5_K_M/Q6_K pending evaluation, Q4_K_M withheld as broken) plus `prompt_format.json` under `gguf/`.
+* `jialinyyzz/humanizer-gemma-4-e4b` — one repo holds every variant: merged bf16 in transformers format at the root (SFT + DPO merged into the base), and llama.cpp GGUF files (Q8_0, Q6_K, bf16; Q5_K_M and Q4_K_M withheld — fidelity collapses below 6-bit) plus `prompt_format.json` under `gguf/`.
 
 Both derive from `google/gemma-4-E4B` and are provided under the Gemma Terms of Use (see `NOTICE`). Code in this repository is Apache-2.0.
 

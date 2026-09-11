@@ -1,5 +1,7 @@
 # humanizer
 
+[English](README.md) | [中文](README.zh.md)
+
 A small model that rewrites AI-written drafts so they read like a person wrote them, while keeping every fact, number, name and date. Base: `google/gemma-4-E4B` (≈4B effective parameters). Runs locally on a Mac (MLX) or on a CUDA GPU (transformers).
 
 **No detector was used as a reward, a filter, a training signal, or a selection criterion at any stage.** The model was trained only on *how people write*; it passes AI detectors as a side effect of writing like a person, and we report detector numbers below purely as an external check.
@@ -41,24 +43,92 @@ Human-written originals from the training genres score 9/9 "human" on the same d
 * Chinese is weaker than English (10/16).
 * Drafts under ~120 words are rewritten less reliably.
 
+## Samples
+
+One English and one Chinese example; more in [docs/samples.md](docs/samples.md).
+
+### Email to a professor / 给教授的邮件
+
+**Draft (Claude) / 草稿:**
+
+> Dear Professor Lin,
+> 
+> I'm following up on the dataset access request I submitted on October 14th. I understand these reviews take time, and I appreciate you looking into it.
+> 
+> To give a bit more context: my analysis only uses the 2019–2021 subset, and I'm interested purely in the temporal patterns, so I won't need any of the personally identifying fields. If it would help, I'm happy to send a more detailed methodology document, or to walk through the scope of the request in person at whatever time suits you.
+> 
+> Please let me know if there's anything else you need from me to move the approval along. Thank you again for your time.
+> 
+> Best regards,
+> Wei
+
+**Humanizer output / 改写:** *(5-gram copy 0.14)*
+
+> Dear Professor Lin,
+> 
+> Just following up on the access request for the data set that I submitted on October 14th. I know that the review process takes time and I appreciate the time you're taking to look into this.
+> 
+> To provide a little more context, I am only using the 2019-2021 subset for my analysis and I am only interested in the temporal patterns so I won't need any personally identifiable fields. If you would like, I can provide a more detailed methodology document or we can go through the scope of the request in person at your convenience.
+> 
+> Please let me know if there is anything else that I need to provide to help with the approval process. Thanks again for your time.
+> 
+> Best regards,
+> Wei
+
+### 中文邮件 / Chinese email
+
+**Draft (Claude) / 草稿:**
+
+> 李老师您好,
+> 
+> 关于上周提到的数据访问申请,我想再补充几点说明。
+> 
+> 首先,本次分析只涉及 2019 至 2021 年的时间序列子集,不需要任何身份识别字段,所以不会触及隐私数据。其次,考虑到审批通常需要两到三周,我已经把实验计划相应顺延,整体进度不会受影响。另外,如果您对数据的使用方式还有疑问,我可以提供一份更详细的方法说明,或者找个您方便的时间当面沟通。
+> 
+> 希望这件事能尽快推进。再次感谢您的时间和帮助。
+> 
+> 祝好
+> 小王
+
+**Humanizer output / 改写:** *(5-gram copy 0.31)*
+
+> 李老师您好，
+> 
+> 上周关于数据访问申请的事情补充说明一下。
+> 
+> 1、本次只使用2019-2021的时间序列子集，不涉及任何身份识别字段，所以不存在涉及隐私数据的问题；
+> 
+> 2、考虑到审批周期大概需要两到三周，所以已经将实验计划顺延，不影响整体进度；
+> 
+> 3、如果对数据的使用方法还有疑问，我可以再提供一个更详细的方法说明，或者找个时间见面沟通。
+> 
+> 希望能尽快推进。再次感谢您的时间和帮助！
+> 
+> 祝好
+> 小王
+
 ## Usage
 
-### MLX (Apple silicon)
+### GGUF (llama.cpp, Ollama, LM Studio, llama-cpp-python) — recommended
+
+Files in the `gguf/` folder of `jialinyyzz/humanizer-gemma-4-e4b`: `Q8_0` (8.0 GB), `Q5_K_M` (5.7 GB), `Q4_K_M` (5.3 GB), `bf16` (14.9 GB). Quality of each quant on the daily set is in `docs/QUALITY.md`.
 
 ```bash
-pip install mlx-lm
-# 8-bit MLX weights (~7.4 GB) or bf16 (~16 GB) from the Hugging Face repos below
-python humanizer/mlx_nocopy_server.py --model ./humanizer-gemma-4-e4b-mlx-8bit --port 8104
-python humanizer/humanize.py --model-dir ./humanizer-gemma-4-e4b-mlx-8bit --port 8104 draft.txt
+pip install llama-cpp-python        # CMAKE_ARGS="-DGGML_METAL=on" (Mac) or "-DGGML_CUDA=on"
+python humanizer/gguf_infer.py --gguf humanizer-gemma-4-e4b-Q8_0.gguf --format prompt_format.json draft.txt
 ```
 
-`mlx_nocopy_server.py` is an OpenAI-style `/v1/completions` server with three extra fields (`copy_penalty`, `copy_n`, `draft`) that implement the anti-copy penalty; `humanize.py` adds the adaptive resample.
+`gguf_infer.py` applies the anti-copy guard through a logits processor. Plain `llama-cli`, Ollama and LM Studio run the same file but cannot apply the penalty; with them, resample if the output still copies more than about a third of the draft.
 
-### transformers (CUDA)
+### transformers (CUDA), merged bf16
 
 ```bash
 python humanizer/hf_infer.py --model jialinyyzz/humanizer-gemma-4-e4b draft.txt
 ```
+
+### MLX (Apple silicon), bf16 only
+
+`humanizer/mlx_nocopy_server.py` + `humanizer/humanize.py` serve the merged bf16 weights with the guard. Note: mlx_lm's Gemma 4 loader rejects the 54 unused k/v tensors of the 18 shared-KV layers in the HF checkpoint; strip `layers.24–41.self_attn.(k_proj|v_proj|k_norm)` before loading. MLX 4-/6-bit quantisation of this model is not usable (see `docs/QUALITY.md`); use the GGUF quants instead.
 
 ### Prompt format
 
@@ -77,8 +147,7 @@ Generation stops at EOS. Sampling: temperature 0.85, top-p 0.95.
 
 ## Weights
 
-* `jialinyyzz/humanizer-gemma-4-e4b` — merged bf16, transformers format (SFT + DPO merged into the base)
-* `jialinyyzz/humanizer-gemma-4-e4b-mlx-8bit` — MLX, 8-bit, group size 64 (within judge noise of bf16). No 4- or 6-bit build: 4-bit produces gibberish and 6-bit triples critical fidelity errors on this model, see `docs/QUALITY.md`.
+* `jialinyyzz/humanizer-gemma-4-e4b` — one repo holds every variant: merged bf16 in transformers format at the root (SFT + DPO merged into the base), and llama.cpp GGUF files (Q8_0, Q5_K_M, Q4_K_M, bf16) plus `prompt_format.json` under `gguf/`.
 
 Both derive from `google/gemma-4-E4B` and are provided under the Gemma Terms of Use (see `NOTICE`). Code in this repository is Apache-2.0.
 

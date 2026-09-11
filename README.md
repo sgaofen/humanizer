@@ -78,7 +78,7 @@ Generation stops at EOS. Sampling: temperature 0.85, top-p 0.95.
 ## Weights
 
 * `jialinyyzz/humanizer-gemma-4-e4b` — merged bf16, transformers format (SFT + DPO merged into the base)
-* `jialinyyzz/humanizer-gemma-4-e4b-mlx-8bit` — MLX, 8-bit, group size 64 (within judge noise of bf16; 4-bit is not released yet because Gemma 4's per-layer embeddings collapse under 4-bit quantisation, see `docs/QUALITY.md`)
+* `jialinyyzz/humanizer-gemma-4-e4b-mlx-8bit` — MLX, 8-bit, group size 64 (within judge noise of bf16). No 4- or 6-bit build: 4-bit produces gibberish and 6-bit triples critical fidelity errors on this model, see `docs/QUALITY.md`.
 
 Both derive from `google/gemma-4-E4B` and are provided under the Gemma Terms of Use (see `NOTICE`). Code in this repository is Apache-2.0.
 

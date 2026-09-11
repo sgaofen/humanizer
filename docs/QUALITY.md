@@ -13,10 +13,12 @@ Evaluation set: `eval_daily/` — 39 cases (31 English, 8 Chinese), drafts writt
 | Mac, MLX 8-bit (group 64, 8.5 bpw, 7.4 GB) | 0.19 | 1 / 62 | 1.03 | 9 | 25 | 28 | 11 / 16 |
 | Mac, MLX 4-bit (4.5 bpw) — **not released** | 0.00 | 0 | 1.35 | 62 | 0 | 0 | 0 / 16 |
 | Mac, MLX mixed 4/6-bit — **not released** | 0.00 | 0 | 1.18 | 62 | 0 | 0 | 0 / 16 |
+| Mac, MLX 4-bit linear layers only, embeddings kept bf16 — **not released** | 0.00 | 0 | 1.17 | 62 | 0 | 0 | 0 / 16 |
+| Mac, MLX 6-bit (6.5 bpw, 5.7 GB) — **not released** | 0.13 | 0 | 1.02 | 17 | 24 | 21 | 9 / 16 |
 
 * MLX bf16 on the Mac reproduces the cluster result within judge noise on critical errors; it shows a few more "minor" verdicts (hedging shifts) — likely sampling variance plus numerics, not a deployment bug.
 * 8-bit is the smallest usable quantisation: within noise of bf16 on every metric.
-* Plain 4-bit and mixed 4/6-bit both produce gibberish (numbers and names replaced by noise, Chinese collapses). Gemma 4 E4B's per-layer input embeddings do not survive 4-bit quantisation under mlx_lm's default scheme; a predicate that leaves embeddings unquantised is being tested and will be released if it passes the same check.
+* Plain 4-bit, mixed 4/6-bit, and 4-bit with embeddings left in bf16 all produce gibberish, so the damage is in the 4-bit linear layers themselves, not the embeddings. 6-bit is coherent but nearly triples critical fidelity errors (17 vs 6–9). For this model on MLX, 8-bit is the floor; no 4- or 6-bit build is published.
 
 ## Reading the six critical errors (cluster run)
 

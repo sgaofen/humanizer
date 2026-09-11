@@ -35,6 +35,8 @@ Rewrites AI-written drafts so they read like a person wrote them, keeping every 
 | Chinese cases passing judge | 10 / 16 | 4 / 16 |
 | Originality.ai "human" *(external check only)* | 79 % | 57 % |
 
+Same weights on a Mac (MLX bf16 and MLX 8-bit) reproduce these numbers within judge noise; plain 4-bit quantisation breaks the model (per-layer embeddings), so no 4-bit build is published yet. Details: `docs/QUALITY.md` in the GitHub repo.
+
 Known failure modes: ~1 in 10 outputs has a meaning flip (who did what, ordered vs received, a metric renamed); subject lines/greetings occasionally dropped; Chinese weaker than English; short drafts (< 120 words) less reliable. **Proofread numbers, dates and the direction of every claim.**
 
 ## Prompt format (must match exactly)

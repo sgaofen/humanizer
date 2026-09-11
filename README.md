@@ -47,9 +47,9 @@ Human-written originals from the training genres score 9/9 "human" on the same d
 
 ```bash
 pip install mlx-lm
-# 4-bit weights (~5 GB) or bf16 (~16 GB) from the Hugging Face repos below
-python humanizer/mlx_nocopy_server.py --model ./humanizer-gemma-4-e4b-mlx-4bit --port 8104
-python humanizer/humanize.py --model-dir ./humanizer-gemma-4-e4b-mlx-4bit --port 8104 draft.txt
+# 8-bit MLX weights (~7.4 GB) or bf16 (~16 GB) from the Hugging Face repos below
+python humanizer/mlx_nocopy_server.py --model ./humanizer-gemma-4-e4b-mlx-8bit --port 8104
+python humanizer/humanize.py --model-dir ./humanizer-gemma-4-e4b-mlx-8bit --port 8104 draft.txt
 ```
 
 `mlx_nocopy_server.py` is an OpenAI-style `/v1/completions` server with three extra fields (`copy_penalty`, `copy_n`, `draft`) that implement the anti-copy penalty; `humanize.py` adds the adaptive resample.
@@ -78,7 +78,7 @@ Generation stops at EOS. Sampling: temperature 0.85, top-p 0.95.
 ## Weights
 
 * `jialinyyzz/humanizer-gemma-4-e4b` — merged bf16, transformers format (SFT + DPO merged into the base)
-* `jialinyyzz/humanizer-gemma-4-e4b-mlx-4bit` — MLX, 4-bit, group size 64
+* `jialinyyzz/humanizer-gemma-4-e4b-mlx-8bit` — MLX, 8-bit, group size 64 (within judge noise of bf16; 4-bit is not released yet because Gemma 4's per-layer embeddings collapse under 4-bit quantisation, see `docs/QUALITY.md`)
 
 Both derive from `google/gemma-4-E4B` and are provided under the Gemma Terms of Use (see `NOTICE`). Code in this repository is Apache-2.0.
 

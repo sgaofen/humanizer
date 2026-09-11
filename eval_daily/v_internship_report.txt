@@ -1,0 +1,7 @@
+Summary of my summer internship at the state climate office.
+
+I spent ten weeks on the drought monitoring team, mostly working on the weekly soil moisture product. My main task was replacing a manual step in the pipeline: previously, an analyst downloaded satellite files by hand every Tuesday and checked them for gaps. I wrote a script that pulls the files automatically, flags missing tiles, and emails a summary. It has run without a failure for the last six weeks, and it saves the team roughly three hours a week.
+
+I also helped with the August drought briefing, where I produced the county-level maps and sat in on the call with the agricultural extension offices. That call taught me more about how the data gets used than anything else this summer. Farmers don't care about the index value; they want to know whether next week looks better or worse.
+
+If I could change one thing, I would have started the automation project earlier. I spent the first three weeks reading documentation that turned out to be outdated.

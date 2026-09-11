@@ -1,0 +1,12 @@
+Hi Marcus,
+
+I owe you an apology for yesterday. I cut you off in the design review when you were explaining the caching approach, and I did it in front of the whole team. That was not fair to you, and it wasn't a good way to run the meeting.
+
+For what it's worth, I went back and read your proposal properly afterward, and I think you're right about the invalidation strategy. My concern was only about the memory ceiling on the smaller instances, and that's something we can handle with a config flag rather than a different design.
+
+I'd like to put the caching work back on the agenda for Monday, with you presenting it, and I'll make sure there's time for questions this time. Let me know if that works for you, or if you'd rather talk it through one-on-one first.
+
+Again, I'm sorry.
+
+Best,
+Anita

@@ -1,0 +1,15 @@
+Subject: Collaboration Interest in Your Published Dataset
+
+Dear Dr. [Researcher's Name],
+
+My name is Stephen Yu, and I am a PhD student researching [your research area]. I recently came across your published dataset on [dataset topic] and was impressed by its scope and the rigor of its collection methodology. I believe it holds significant potential for further analysis that aligns closely with my current research interests.
+
+I am writing to ask whether you would be open to a collaboration centered on this dataset. Specifically, I am interested in applying [describe planned analysis, e.g., a machine learning framework, statistical modeling approach, or comparative analysis] to explore [specific research question or hypothesis]. I believe this could yield insights that complement and extend the findings from your original work.
+
+In terms of what I can contribute, I bring strong technical skills in [relevant tools/methods, e.g., Python, R, statistical modeling], as well as experience in [relevant prior work or publications]. I am also happy to handle the bulk of the analytical workload and manuscript drafting, with your guidance on framing and interpretation given your expertise in this area.
+
+I would greatly appreciate the opportunity to discuss this further at your convenience. Thank you for considering my proposal.
+
+Best regards,
+Stephen Yu
+stephenyu070129@gmail.com

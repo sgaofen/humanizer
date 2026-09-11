@@ -1,0 +1,21 @@
+Treasurer's Report – Robotics Club
+September 6, 2026
+
+Fellow members,
+
+Please find below a summary of the club's financial activity for the current period.
+
+We began this period with a starting balance of $4,120. During this time, we received a generous sponsorship contribution of $1,500, which has significantly strengthened our operating budget and allowed us to move forward with several planned initiatives.
+
+On the expenditure side, the club spent a total of $2,340, which covered the purchase of motors for our competition robot build as well as the registration fee for our upcoming competition. These were necessary and previously approved expenses that keep us on track for the season.
+
+Taking these figures into account, our current balance stands at $3,280 ($4,120 starting balance + $1,500 sponsorship − $2,340 in expenses).
+
+Looking ahead, I would like to formally request approval for the purchase of a laptop, priced at $600. This equipment is needed to support our programming and controls subteam, particularly for running simulation software and managing onboard code during testing and competition. I recommend the club vote on this request at our next meeting so we can proceed with the purchase in a timely manner.
+
+Additionally, I want to flag that there is one reimbursement still pending from a member who covered supply costs out of pocket during our last build session. I am following up to collect the necessary receipt documentation and expect this to be resolved and reflected in our next report.
+
+Please let me know if you have any questions regarding these figures or the laptop request. Thank you for your continued support of the club's financial health.
+
+Respectfully submitted,
+Treasurer, Robotics Club

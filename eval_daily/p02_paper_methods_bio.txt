@@ -1,0 +1,11 @@
+Methods
+
+Male and female C57BL/6 mice were used for all experiments and were housed under specific-pathogen-free conditions at an ambient temperature of 22°C with a 12 h light/12 h dark cycle and ad libitum access to standard chow and water. Animals were randomly assigned to experimental or control groups (n = 8 per group), with group sizes determined to provide adequate statistical power based on prior pilot data. All procedures were approved by the Institutional Animal Care and Use Committee and conducted in accordance with institutional and national guidelines for the care and use of laboratory animals.
+
+Mice in the treatment group received daily intraperitoneal injections of the test compound at a dose of 5 mg/kg body weight, dissolved in an appropriate vehicle, for 14 consecutive days. Control animals received an equivalent volume of vehicle alone on the same schedule. Body weight and general health were monitored daily throughout the treatment period to assess tolerability.
+
+At the conclusion of the 14-day treatment period, mice were euthanized, and target tissues were rapidly dissected and immersion-fixed in 4% paraformaldehyde (PFA) in phosphate-buffered saline at 4°C for 24 h. Fixed tissues were subsequently processed for cryosectioning or paraffin embedding, sectioned at a thickness of 10–20 µm, and mounted on glass slides for downstream immunofluorescence staining as required.
+
+Imaging was performed using a laser-scanning confocal microscope, with acquisition settings (laser power, gain, and pinhole size) held constant across all samples within an experiment to allow for direct comparison. Representative z-stack images were captured for each sample, and quantitative image analysis was conducted using consistent thresholding parameters.
+
+Statistical analysis was performed using two-way analysis of variance (ANOVA) to assess the effects of treatment, sex, or other relevant factors and their interactions, followed by appropriate post hoc multiple comparisons tests where applicable. Data are presented as mean ± SEM, with p < 0.05 considered statistically significant. All analyses were conducted using standard statistical software.

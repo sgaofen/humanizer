@@ -1,0 +1,5 @@
+The code in this repository is licensed under Apache-2.0.
+
+The released model weights are a fine-tune of google/gemma-4-E4B and are provided under and subject to
+the Gemma Terms of Use (https://ai.google.dev/gemma/terms). By downloading or using the weights you agree
+to those terms. Gemma is provided under and subject to the Gemma Terms of Use found at ai.google.dev/gemma/terms.

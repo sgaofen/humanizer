@@ -1,0 +1,20 @@
+Subject: Weekly Progress Report – Mouse Behavior Experiment
+
+Hi [PI's name],
+
+Here's a summary of this week's progress on the behavioral experiment.
+
+I ran all 12 animals through the assay this week, split evenly between the two conditions (6 control, 6 treatment). Testing went smoothly Monday, Wednesday, Thursday, and Friday, but I hit a snag on Tuesday when the tracking software crashed partway through the third animal's session. I lost that session's data and had to reschedule the remaining three animals originally slated for Tuesday to Thursday afternoon. I've since restarted the software and confirmed it's running stably, and I'm keeping a closer eye on it during each session to catch any recurrence early.
+
+Despite the interruption, I was able to complete testing for all 12 animals by the end of the week. Preliminary numbers look promising: the treatment group is showing a noticeable increase in exploratory behavior compared to control, with mean latency to enter the open arm dropping from roughly 45 seconds (control) to about 28 seconds (treatment). Total time spent in the open arm also appears elevated in the treatment group. I want to emphasize these are just rough, unanalyzed numbers pending formal statistics, but the trend is consistent with what we hypothesized.
+
+For next week, my plan is to:
+1. Finish scoring and formally analyze this week's video data.
+2. Run statistical tests (likely t-tests or mixed-effects models depending on variance) to confirm whether the group differences are significant.
+3. Begin the second round of testing for the same 12 animals to get repeated measures.
+4. Follow up with IT/facilities regarding the tracking software crash to prevent future data loss.
+
+Let me know if you'd like to discuss the preliminary results or adjust the protocol before I continue next week.
+
+Best,
+Stephen

@@ -1,0 +1,7 @@
+Quick update on the sensor pipeline before tomorrow's sync.
+
+The ingestion rewrite is done and has been running against production traffic since Monday. Median latency dropped from 340 ms to 95 ms, and we haven't seen a single dropped batch in four days, compared with roughly a dozen a day under the old code. The one thing I'm still not happy about is memory: the new parser holds the whole file in RAM, which is fine for today's 20 MB uploads but will not be fine when the Denver site starts sending 200 MB files next month. I'd rather fix that now than get paged for it.
+
+On the dashboard side, Mei finished the alert thresholds and I reviewed them yesterday. They look reasonable, though I'd lower the temperature warning from 85 to 80 degrees based on what we saw in July.
+
+Two asks for the meeting: a decision on whether to keep the legacy endpoint alive past October, and an extra half-day of Mei's time for the memory fix.

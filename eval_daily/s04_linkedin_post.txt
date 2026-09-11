@@ -1,0 +1,9 @@
+I just wrapped up a data analytics bootcamp, and I wanted to share a bit about the experience.
+
+Over the past few months, I worked through SQL, Python, and data visualization tools to build a project I'm genuinely proud of: a dashboard analyzing retail sales trends, where I cleaned raw transaction data, built queries to surface patterns in customer behavior, and visualized the results to answer questions like which product categories drive repeat purchases and where seasonal dips happen.
+
+What surprised me most wasn't the technical skills themselves, but how much of analytics is really about asking better questions and communicating findings clearly to people who don't want to see the code, just the insight.
+
+I'm now looking for a junior data analyst role where I can keep learning, contribute to real decisions, and grow alongside a team. I know I still have a lot to learn, and I'm looking forward to doing that on the job.
+
+If you know of an opening, or if you're happy to share advice on breaking into the field, I'd really appreciate hearing from you. Thanks for reading, and for anyone else early in this journey, happy to compare notes.

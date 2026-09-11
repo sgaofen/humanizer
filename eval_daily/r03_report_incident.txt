@@ -1,0 +1,27 @@
+# Incident Report: Database Outage – March 3
+
+**Date of Incident:** March 3
+**Duration:** 14:05 – 15:40 (1 hour 35 minutes)
+**Severity:** High
+**Customers Affected:** 3
+**Prepared by:** stephenyu070129@gmail.com
+
+## Summary
+On March 3 at 14:05, the primary database node became unresponsive, resulting in a service outage for a subset of customers. The issue was resolved by 15:40 after the underlying storage constraint was addressed and the node was restored to normal operation.
+
+## Root Cause
+Investigation determined that the primary database node's disk reached full capacity. This was primarily driven by unchecked growth of transaction log files combined with the absence of automated log rotation and disk usage alerting. Once the disk hit capacity, the database engine could not write new transactions, causing connections to fail and triggering the outage.
+
+## Impact
+Three customers experienced service disruption, including failed requests and inability to read or write data during the outage window. No data loss occurred, as all transactions in progress at the time of failure were either rolled back or successfully replayed after recovery.
+
+## Actions Taken
+1. On-call engineer was paged at 14:10 following automated alerting for database connectivity failures.
+2. Root cause was identified as disk space exhaustion on the primary node by 14:35.
+3. Non-critical log and temporary files were purged to free up disk space.
+4. The database service was restarted and validated for data integrity at 15:30.
+5. Full service restoration was confirmed at 15:40, and affected customers were notified.
+
+## Follow-Up Actions
+1. Implement automated disk usage monitoring and alerting at 80% threshold — **Owner: Infrastructure Team (J. Martinez)** — Due: March 10.
+2. Configure automated log rotation and retention policies on all database nodes — **Owner: Database Administration Team (S. Chen)** — Due: March 14.

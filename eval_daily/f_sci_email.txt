@@ -1,0 +1,10 @@
+Hi Huixin,
+
+I went back through the papers and found a specific problem. The motility metric in Cui 2020 (Fig 4) is just the sum of apparent cell displacement between consecutive frames. At their temporal resolution, more than 90% of that displacement is tracking noise, and because step lengths are always positive, the noise accumulates instead of averaging out. The MSD approach handles this cleanly: the slope gives the true movement (D) and the intercept is the noise (sigma).
+
+To check this on real data, I re-analyzed the two time-lapse videos they published (Videos S2 and S4, Fig 4) using both methods, same cells and same trajectories, only the statistic differs. With their formula, CCL2/control comes out to 1.14x with overlapping confidence intervals, which matches their non-significant trend. With MSD, D differs by 5.6x and the difference is clearly significant.
+
+The same issue applies to the motility panel (Fig 4K) in the 2026 preprint. Once the WT control recordings are in, I can run our data through the same pipeline.
+
+Best,
+Stephen

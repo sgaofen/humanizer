@@ -1,0 +1,11 @@
+# The Case Against AI-Generated Art in Student Competitions
+
+Juried student art competitions exist to recognize the skill, creativity, and personal growth of individual artists. As artificial intelligence tools capable of generating sophisticated images from simple text prompts become more accessible, a pressing question has emerged: should AI-generated art be eligible for these competitions? I argue it should not. Juried student art competitions should exclude AI-generated work because it undermines the demonstration of personal skill and fails to reflect the developmental journey these competitions are meant to celebrate.
+
+First, AI-generated art does not showcase the technical skill that juried competitions are designed to evaluate. When a student spends months mastering brushstrokes, color theory, or digital illustration techniques, the resulting artwork reflects countless hours of practice and refinement. An AI-generated image, by contrast, requires only a well-crafted prompt. Rewarding such work in a skill-based competition is akin to giving a music award to someone who simply pressed play on a recording rather than performed the piece themselves.
+
+Second, allowing AI art creates an uneven playing field. Not all students have equal access to the same AI tools, subscriptions, or technical literacy required to generate compelling AI images. Traditional art, however, primarily depends on time invested and skill developed, factors within every student's control regardless of financial background. Permitting AI submissions could inadvertently favor students with greater technological resources over those with genuine artistic dedication.
+
+Critics might argue that AI is simply a new artistic medium, no different from photography or digital tools, and that curating prompts requires its own creative skill. While prompt engineering does require some creativity, it is fundamentally different from creating original visual content by hand or through direct digital manipulation. The gap between typing a description and physically rendering an image is too vast to equate the two processes fairly.
+
+Ultimately, juried student art competitions should preserve their integrity by excluding AI-generated work, ensuring that recognition continues to reward authentic human skill and artistic growth.

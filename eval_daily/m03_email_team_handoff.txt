@@ -1,0 +1,16 @@
+Subject: Handoff Notes — Dashboard & Data-Cleaning Script
+
+Hi everyone,
+
+As my internship wraps up this week, I wanted to make sure the two projects I've been working on are properly handed off so nothing falls through the cracks.
+
+First, the analytics dashboard: it's fully functional, but there's still an unresolved timezone bug where timestamps display in UTC instead of converting to the user's local timezone on the summary view. I started digging into it but ran out of time to fix it properly. Priya has been reviewing the dashboard's front-end logic with me and knows the codebase well, so she'd be the best person to loop in on this.
+
+Second, the data-cleaning script lives in the shared repo under /scripts/data_cleaning/clean_pipeline.py. It automates removal of duplicate entries and standardizes date formats before data gets loaded into the reporting system. It's been running smoothly, but if any issues come up or you want to extend its functionality, Marcus has full context on the data pipeline architecture and can help troubleshoot.
+
+I've also left comments throughout both codebases and a short README in each folder summarizing what's been done and what's outstanding.
+
+Thank you all for such a great learning experience this summer — I've genuinely enjoyed working with this team. Feel free to reach out at stephenyu070129@gmail.com if anything comes up before my last day.
+
+Best,
+Stephen

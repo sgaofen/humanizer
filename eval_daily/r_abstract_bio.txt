@@ -1,0 +1,5 @@
+We examined whether microglial depletion alters the clearance of choroid plexus debris in a mouse model of Alzheimer's disease. Five-month-old 5xFAD mice and wild-type littermates received either a CSF1R inhibitor or a control diet for 21 days, after which we imaged the lateral ventricle choroid plexus by two-photon microscopy and quantified macrophage motility using mean squared displacement.
+
+Depletion reduced choroid plexus macrophage density by 78% in both genotypes. In 5xFAD mice, the remaining macrophages showed a diffusion coefficient 2.3 times higher than in wild-type animals, and debris accumulation along the ventricular surface increased by 41% relative to untreated 5xFAD controls. Wild-type mice showed no significant change in debris.
+
+These results suggest that choroid plexus macrophages actively limit debris accumulation in the amyloid-burdened brain and that their motility, rather than their number alone, is the relevant variable. We note that the 21-day window may be too short to capture compensatory recruitment.

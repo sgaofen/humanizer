@@ -68,3 +68,38 @@ if __name__ == '__main__':
     t0 = time.time()
     print(repr(zai(sys.argv[1] if len(sys.argv) > 1 else 'Reply with exactly: alpha beta gamma',
                    max_tokens=200)), f'({time.time()-t0:.1f}s)')
+
+
+# ── Luna(gpt-5.6-luna,走 codex CLI)────────────────────────────────────────────
+# 2026-09-12:判定的第二票改用另一个模型。原来 votes=2 是 GLM 自己判两遍,同一个模型的两次采样
+# 共享同样的系统偏差 —— 它系统性看错的地方,判几次都一样看错。换成跨模型才是真的两票。
+# 附带好处:RL 在线训练期间集群在狂打 GLM(R1 曾因此判定失败率 30%),评测走 Luna 就不抢配额。
+# 代价:codex 是子进程,约 7 秒一发(GLM 直连 1.7 秒),所以只用在评测侧,不进 RL 奖励
+#(集群节点上也没有 codex 与它的登录态)。
+import subprocess, tempfile
+
+LUNA_FAILS = collections.Counter()
+
+
+def luna(prompt, model='gpt-5.6-luna', timeout=300, retries=2):
+    """返回文本;失败返回 None。接口与 zai() 对齐,方便两边互换。"""
+    for attempt in range(retries):
+        fd, path = tempfile.mkstemp(suffix='.txt'); os.close(fd)
+        try:
+            subprocess.run(['codex', 'exec', '--ephemeral', '-s', 'read-only', '--skip-git-repo-check',
+                            '-m', model, '-o', path, '-'],
+                           input=prompt, capture_output=True, text=True, timeout=timeout, cwd='/tmp')
+            t = open(path).read().strip()
+            if t:
+                return t
+            LUNA_FAILS[f'空内容#{attempt}'] += 1
+        except subprocess.TimeoutExpired:
+            LUNA_FAILS['超时'] += 1
+        except Exception as ex:
+            LUNA_FAILS[type(ex).__name__] += 1
+        finally:
+            try: os.remove(path)
+            except Exception: pass
+        time.sleep(1 + attempt * 2)
+    LUNA_FAILS['最终失败'] += 1
+    return None

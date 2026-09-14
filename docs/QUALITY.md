@@ -1,4 +1,30 @@
-# Quality check of the released model (2026-09-10)
+# Quality check of the released model
+
+## v2 (2026-09-14): SFT + DPO + GRPO
+
+Same 39-case daily-use set, two samples per case. Fidelity now graded by **two independent judges** (GLM-5.3 and gpt-5.6-luna); an error counts only if both report it, and severity is the milder of the two. Every row below, including v1, is graded under this protocol. `reuse` = max(verbatim 5-gram copy, syntactic-skeleton 5-gram recall with content words masked) — it catches sentence-by-sentence synonym substitution that verbatim copy misses. Decoding identical for every row (temperature 0.85, top-p 0.95, adaptive anti-copy resample).
+
+| run | critical | minor | clean | format element dropped | reuse (median) | Chinese pass | Originality.ai "human" *(external check only)* |
+|---|---|---|---|---|---|---|---|
+| v1: SFT + DPO (previous release) | 3 | 15 | 44 | 12 | 0.34 | 11 / 16 | 50 / 62 = 81 % |
+| RL on fidelity only (R3) | 2 | 7 | 53 | 3 | 0.39 | — | 32 / 62 = 52 % |
+| + register term (R4) | 2 | 9 | 51 | 3 | 0.37 | 12 / 16 | 45 / 62 = 73 % |
+| + reuse ramp, weight 8, step 175 (R6-s175) | 1 | 25 | 36 | 3 | 0.28 | 15 / 16 | 53 / 62 = 85 % |
+| + reuse ramp, weight 8, step 200 (R6-s200) | 3 | 19 | 40 | 5 | 0.30 | — | 51 / 62 = 82 % |
+| + reuse ramp, weight 8, step 300 (R6 final) | 7 | 17 | 38 | 7 | 0.28 | — | not scanned |
+| **+ reuse ramp, weight 4, step 300 (R7 final) — released as v2** | **0** | 20 | 42 | 5 | 0.29 | 13 / 16 | **53 / 62 = 85 %** |
+| reuse ramp weight 4, step 175 (R7-s175) | 3 | 14 | 45 | 1 | 0.34 | — | not scanned |
+
+What the ladder shows:
+
+* **RL on fidelity alone makes the model write more "properly"** — contractions expanded, slang formalised, hedges regularised — and the detector pass rate collapses (81 % → 52 %) even though fact errors improve. Policy entropy falls from 0.68 to 0.49 over training; within one run the higher-entropy half of the outputs passes the detector 32 points more often than the lower-entropy half. A single reward term that penalises normalising the draft's register (R4) restores most of it (73 %) and keeps the fidelity gain.
+* **The reuse ramp lowers reuse from 0.37 to 0.28–0.30 within ~150 steps and then stops falling**; training beyond that point only adds fact errors (R6: 1 critical at step 175, 7 at step 300). Halving the ramp weight (R7) keeps the reuse gain and removes the late-stage damage (0 critical at step 300). The trade-off that remains is *minor* errors — dropped qualifiers — which rise from 15 to 20.
+* Detector pass rate is a plateau, not a point: R6-s175 85 %, R6-s200 82 %, R7 85 %, all above v1's 81 % (paired McNemar tests vs v1 are not individually significant at n = 62).
+* Pure-SFT variants with different data recipes, generated under the same decoding, all have far worse fidelity (5–12 critical, 30–40 minor): the fact preservation comes from DPO/RL, not from the SFT recipe.
+
+GGUF quants of v2 (Q8_0, Q6_K, bf16) were built with the same recipe as v1; the per-quant table below was measured on v1 and has not been re-run on v2.
+
+## v1 (2026-09-10): SFT + DPO
 
 Model: `humanizer-gemma-4-e4b` = google/gemma-4-E4B + LoRA SFT (28.6k pairs) + DPO ×2 (1,898 pairs), merged. Decoding: temperature 0.85, top-p 0.95, adaptive anti-copy (resample once with the 5-gram penalty if the first sample copies > 35 %).
 

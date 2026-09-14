@@ -4,7 +4,7 @@
 
 一个把 AI 写的草稿改成"像人写的"的小模型,改写时保留每一个事实、数字、人名和日期。底座 `google/gemma-4-E4B`(约 4B 有效参数),Mac(MLX / llama.cpp)和 CUDA 显卡(transformers)都能本地跑。
 
-**训练全程没有任何 AI 检测器参与:不做奖励、不做过滤、不做训练信号、不做选样标准。** 模型学的只是"人是怎么写的";它能过检测器是像人写作的副作用。下面的检测器数字只作外部核对。
+**v2(2026-09-14):SFT + DPO + 强化学习(GRPO),奖励只看忠实度、语域和复用率。** **训练全程(包括 RL 阶段)没有任何 AI 检测器参与:不做奖励、不做过滤、不做训练信号、不做选样标准。** 模型学的只是"人是怎么写的"和"事实有没有保住";它能过检测器是副作用。下面的检测器数字只作外部核对。
 
 ## 它做什么
 
@@ -17,30 +17,37 @@
 
 1. **监督微调(28.6k 对)。** 每对是"AI 草稿 → 人写的原文"。人这一侧永远是真人文本(bioRxiv/PubMed 摘要、政府报告、学生作文、公司和邮件列表邮件、Reddit 和 Hacker News 帖子、知乎回答、中文正式文体等);AI 这一侧是当前一线模型(Claude Sonnet、GPT-5 级、GLM-5.3)根据人写原文写出的同内容草稿。模型学的是同一内容上"机器 → 人"的方向。从不使用合成的"人类"文本。
 2. **两轮偏好优化(DPO,共 1,898 对)。** SFT 模型对每篇草稿写 6 个候选(3 个普通,3 个带解码期反照抄惩罚)。另一个模型(GLM-5.3)只判**忠实度**:事实是否全在、意思有没有改、有没有添加、问候落款有没有丢、是不是原样照抄,并分严重等级。*chosen* = 没有忠实度问题且与草稿逐字重合最低的候选;*rejected* = 有严重事实错或几乎原样照抄的候选。风格、长度、句式、检测器分数都不进入选样。
-3. **解码期守卫(只在推理时)。** 第一发若照抄了草稿 35% 以上的 5-gram,就带惩罚重采一发:会拼出草稿里已有 5-gram 的 token 被降低 logit(数字 token 豁免)。这去掉了"偷懒原样照抄"的失败模式,不伤事实。
+4. **解码期守卫(只在推理时)。** 第一发若照抄了草稿 35% 以上的 5-gram,就带惩罚重采一发:会拼出草稿里已有 5-gram 的 token 被降低 logit(数字 token 豁免)。这去掉了"偷懒原样照抄"的失败模式,不伤事实。
 
-训练脚本在 `training/`(LoRA SFT、DPO、候选生成、判定提示词)。训练数据不公开,因为人这一侧来源许可不一。
+3. **强化学习(GRPO,300 步,v2)。** 在合并后的 SFT + DPO 模型上再训一个 LoRA(TRL 的 GRPO):每篇草稿采 8 发,600 篇同体裁草稿。奖励全部是忠实度项:判定模型(GLM-5.3)对照草稿的原子事实清单逐条核对每一发(严重事实错 −3.0/条、轻微 −0.15/条、凭空添加 −2.0、意思反转 −2.0、丢格式要素或问候落款 −1.5),草稿的语域被"规范化"(缩写展开、俚语改正式、故意的小写/缺标点被"修好")−1.0,再加一个超线性的**复用率**斜坡:复用率 = max(逐字 5-gram 照抄, 抹掉实词后的句法骨架 5-gram 复用),0.31 以下免罚,整篇照抄扣到 −4。错误的惩罚落在犯错的那句话上(token 级优势重加权)。每 25 步存一个 checkpoint,发布的那一个按留出集挑。两条留下来的经验:只罚事实错、不加语域项,RL 会把模型训得越写越"规范",检测器通过率从 81% 掉到 52%;复用率压不动之后继续训只会多出事实错(斜坡权重 8 而不是 4 时,300 步的版本严重错 7/62)。
+
+训练脚本在 `training/`(LoRA SFT、DPO、GRPO 及 `rl_reward.py` + `textmetrics.py`、候选生成、判定提示词、两票判定)。训练数据不公开,因为人这一侧来源许可不一。
 
 ## 评测
 
 39 例"日常使用"评测集(`eval_daily/`):作文、报告、论文段落、邮件、推特/Reddit/LinkedIn 帖,加 8 例中文;草稿由 Claude Sonnet 撰写。每例 2 个样本。
 
-| 指标(62 篇英文样本) | 本模型 | 生产基线(Qwen3.5-4B 改写器) |
-|---|---|---|
-| 逐字 5-gram 照抄率,中位 | 0.15 | 0.12 |
-| 照抄超过草稿 35% 的样本 | 0 | 33 / 93 |
-| **严重事实错**(判定:意思翻转、数字或事件改变) | **10%**(6/62) | 约 30% |
-| 轻微 / 无错 | 19 / 37 | — |
-| 中文通过判定 | 10 / 16 | 4 / 16 |
-| Originality.ai 判"人写"*(仅外部核对,从未优化)* | **49 / 62 = 79%** | 53 / 93 = 57% |
+忠实度由两个独立判定模型(GLM-5.3 与 gpt-5.6)各判一次,两个都报的错才算;v1 用同一协议重判,列间可比。
 
-同一检测器上,训练体裁的真人原文 9/9 判人写;草稿输入约 0/62。最弱体裁是论文段落(3/6)和报告(5/8)。
+| 指标(62 篇英文样本) | **v2(SFT + DPO + GRPO)** | v1(SFT + DPO) | 生产基线(Qwen3.5-4B 改写器) |
+|---|---|---|---|
+| 逐字 5-gram 照抄率,中位 | 0.14 | 0.15 | 0.12 |
+| 复用率(逐字 ∨ 句法骨架),中位 | **0.29** | 0.34 | — |
+| 照抄超过草稿 35% 的样本 | 0 | 1 | 33 / 93 |
+| **严重事实错**(意思翻转、数字或事件改变) | **0 / 62** | 3 / 62 | 约 30% |
+| 轻微 / 无错 | 20 / 42 | 15 / 44 | — |
+| 丢格式要素(主题行、标题、列表、落款) | **5 / 62** | 12 / 62 | — |
+| 中文通过判定 | **13 / 16** | 11 / 16 | 4 / 16 |
+| Originality.ai 判"人写"*(仅外部核对,从未优化)* | **53 / 62 = 85%** | 50 / 62 = 81% | 53 / 93 = 57% |
+
+同一检测器上,训练体裁的真人原文 9/9 判人写;草稿输入约 0/62。v2 最弱的体裁是社交帖(5/8)、论文段落(4/6)和报告(6/8);邮件 10/10。
 
 ### 已知失败模式(用之前请读)
 
-* 约十分之一的输出有**意思翻转**,细心的读者能发现:谁向谁建议("领导层建议" → "我们建议领导层")、事件("8 月 30 日收到" → "8 月 30 日下单")、指标("客流增长 12%" → "行程时间增长 12%")、比较方向反转、凭空加的"应您要求"。数字、日期和每个论断的方向请务必校对。
-* 主题行和正式问候偶尔会丢。
-* 中文弱于英文(10/16)。
+* **意思翻转**(谁向谁建议、"收到"→"下单"、指标换名、比较方向反转)是 v1 的主要失败模式(约十分之一)。v2 在 62 篇样本上一例没有,但样本小:数字、日期和每个论断的方向仍请务必校对。
+* v2 剩下的错误是**丢限定词**:"估计 4.2%" → "4.2%"、"结果提示" → "我们得出结论"、"12 小时或以上" → "超过 12 小时"。大约三分之一的输出有一处这样的偏移。
+* 改写比 v1 更深;偶尔有一句会改坏("from thousands to thousands")。读着不对就重采一发。
+* 中文弱于英文(13/16)。
 * 120 词以下的短稿改写不稳。
 
 ## 样例
@@ -112,7 +119,7 @@
 
 ### GGUF(llama.cpp、Ollama、LM Studio、llama-cpp-python)— 推荐
 
-文件在 `jialinyyzz/humanizer-gemma-4-e4b` 的 `gguf/` 目录:`Q8_0`(8.0 GB)、`Q6_K`(6.2 GB)、`bf16`(14.9 GB)。Q8_0 和 Q6_K 的事实错都在 bf16 的噪声带内。**Q5_K_M 和 Q4_K_M 不发布**:Q5_K_M 严重错翻近三倍(17/62 对 6),Q4_K_M 和 MLX 4bit 一样退化成乱码(见 `docs/QUALITY.md`)。
+文件在 `jialinyyzz/humanizer-gemma-4-e4b` 的 `gguf/` 目录:`Q8_0`(8.0 GB)、`Q6_K`(6.2 GB)、`bf16`(14.9 GB)。Q8_0 和 Q6_K(v1 上实测,v2 同配方)的事实错都在 bf16 的噪声带内。**Q5_K_M 和 Q4_K_M 不发布**:Q5_K_M 严重错翻近三倍(17/62 对 6),Q4_K_M 和 MLX 4bit 一样退化成乱码(见 `docs/QUALITY.md`)。
 
 ```bash
 pip install llama-cpp-python        # Mac 加 CMAKE_ARGS="-DGGML_METAL=on",N 卡加 "-DGGML_CUDA=on"
@@ -148,10 +155,10 @@ python humanizer/hf_infer.py --model jialinyyzz/humanizer-gemma-4-e4b draft.txt
 
 ## 权重
 
-* `jialinyyzz/humanizer-gemma-4-e4b` — 一个仓库放全部变体:根目录是合并后的 bf16(transformers 格式,SFT + DPO 已合入底座),`gguf/` 目录是 llama.cpp GGUF(Q8_0、Q6_K、bf16;Q5_K_M、Q4_K_M 因 6bit 以下忠实度崩塌不发)和 `prompt_format.json`。
+* `jialinyyzz/humanizer-gemma-4-e4b` — 一个仓库放全部变体:根目录是合并后的 bf16(transformers 格式,SFT + DPO + GRPO 已合入底座),`gguf/` 目录是 llama.cpp GGUF(Q8_0、Q6_K、bf16;Q5_K_M、Q4_K_M 因 6bit 以下忠实度崩塌不发)和 `prompt_format.json`。现在的文件是 **v2**;v1(只有 SFT + DPO)可从仓库的提交历史取回。
 
 均派生自 `google/gemma-4-E4B`,受 Gemma 使用条款约束(见 `NOTICE`)。本仓库代码为 Apache-2.0。
 
 ## 复现
 
-`training/train_sft2.py`(LoRA r=16,只挂语言塔,1 epoch,有效批 16)→ `training/gen_candidates.py` → `training/build_prefs.py --tiers --identity-bad`(需要 `~/.config/zai_key` 里的 GLM API key)→ `training/train_dpo.py`(β=0.1,lr 5e-6,1 epoch)。评测:`training/gen_cases.py` 加 `COPY_PENALTY=2 COPY_N=5 ADAPTIVE_COPY=1 ADAPTIVE_THR=0.35`,再 `training/glm_eval_en.py` / `glm_eval_zh.py`。
+`training/train_sft2.py`(LoRA r=16,只挂语言塔,1 epoch,有效批 16)→ `training/gen_candidates.py` → `training/build_prefs.py --tiers --identity-bad`(需要 `~/.config/zai_key` 里的 GLM API key)→ `training/train_dpo.py`(β=0.1,lr 5e-6,1 epoch)→ `training/train_grpo.py`(GRPO,300 步,每步 2 篇 × 8 发,lr 5e-6,奖励见 `training/rl_reward.py`,`W_COPY=4`;每 25 步留 checkpoint,按留出集挑)。`training/export_merged_gguf.sbatch` 把三层 LoRA 合进底座并出 GGUF。评测:`training/gen_cases.py` 加 `COPY_PENALTY=2 COPY_N=5 ADAPTIVE_COPY=1 ADAPTIVE_THR=0.35`,再 `training/glm_eval_en.py` / `glm_eval_zh.py`。

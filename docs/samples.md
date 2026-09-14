@@ -1,5 +1,7 @@
 # Samples / 样例
 
+*These samples were produced by v1 (SFT + DPO). v2 (SFT + DPO + GRPO) rewrites more deeply; v2 samples will be added. / 以下样例来自 v1;v2 改写更深,样例待补。*
+
 All drafts below were written by Claude Sonnet for the evaluation set (`eval_daily/`); outputs are unedited samples from the released model with the adaptive anti-copy guard (temperature 0.85). These are the model's *typical* outputs, not cherry-picked bests: they were chosen among samples the fidelity judge marked as having no critical error. 以下草稿均由 Claude Sonnet 为评测集所写,改写为模型原样输出,未经人工修改;从判定为无严重事实错的样本中选取,代表典型水平而非最优。
 
 ## English / 英文

@@ -4,7 +4,7 @@
 
 A small model that rewrites AI-written drafts so they read like a person wrote them, while keeping every fact, number, name and date. Base: `google/gemma-4-E4B` (≈4B effective parameters). Runs locally on a Mac (MLX) or on a CUDA GPU (transformers).
 
-**No detector was used as a reward, a filter, a training signal, or a selection criterion at any stage.** The model was trained only on *how people write*; it passes AI detectors as a side effect of writing like a person, and we report detector numbers below purely as an external check.
+**v2 (2026-09-14): SFT + DPO + reinforcement learning (GRPO) with a reward that only scores fidelity, register and reuse.** **No detector was used as a reward, a filter, a training signal, or a selection criterion at any stage** — including in the RL stage. The model was trained only on *how people write* and *whether the facts survived*; it passes AI detectors as a side effect, and we report detector numbers below purely as an external check.
 
 ## What it does
 
@@ -17,30 +17,37 @@ It is a rewriter, not a generator: it will not add claims, examples or padding, 
 
 1. **Supervised fine-tuning (28.6k pairs).** Each pair is *(AI draft → human text)*. The human side is always real human writing (bioRxiv/PubMed abstracts, government reports, student essays, corporate and mailing-list email, Reddit and Hacker News posts, Zhihu answers, Chinese formal prose, …). The AI side is a draft of the same content written by a current frontier model (Claude Sonnet, GPT-5-class, GLM-5.3) from the human text, so the model learns the direction *machine → person* on identical content. Synthetic "human" text is never used.
 2. **Two rounds of preference optimisation (DPO, 1,898 pairs total).** The SFT model writes six candidates per draft (three plain, three under a decoding-time anti-copy penalty). A separate LLM judge (GLM-5.3) grades each candidate for fidelity only — facts kept, meaning unchanged, nothing added, greeting/sign-off kept, not a verbatim copy — with a severity tier. *Chosen* = a candidate with no fidelity issue and the lowest verbatim overlap with the draft; *rejected* = a candidate with a critical fidelity error or a near-verbatim copy. Nothing about style, length, sentence shape or detector score enters the selection.
-3. **Decoding-time guard (inference only).** If a first sample copies more than 35 % of the draft's 5-grams, it is resampled once with a logits penalty on tokens that would complete a 5-gram present in the draft (digit tokens exempt). This removes the "lazy identity copy" failure mode without touching fidelity.
+4. **Decoding-time guard (inference only).** If a first sample copies more than 35 % of the draft's 5-grams, it is resampled once with a logits penalty on tokens that would complete a 5-gram present in the draft (digit tokens exempt). This removes the "lazy identity copy" failure mode without touching fidelity.
 
-Training scripts are in `training/` (LoRA SFT, DPO, candidate generation, the judge prompts). Training data is not released because the human side comes from sources with mixed licences.
+3. **Reinforcement learning (GRPO, 300 steps, v2).** On top of the merged SFT + DPO model, a LoRA is trained with TRL's GRPO: 8 samples per draft, 600 drafts from the same genres. The reward is a sum of fidelity terms only — an LLM judge (GLM-5.3) checks each sample against an atomic fact list of the draft (−3.0 per critical error, −0.15 per minor one, −2.0 for invented content, −2.0 for a reversed meaning, −1.5 for a dropped format element or greeting/sign-off), −1.0 if the draft's register was normalised (contractions expanded, slang formalised, deliberate lowercase/missing punctuation "fixed"), and a superlinear *reuse* ramp: reuse = max(verbatim 5-gram copy, syntactic-skeleton 5-gram recall with content words masked), free below 0.31, up to −4 at full copy. Errors are credited to the sentence that carries them (token-level advantage reweighting). Checkpoints are kept every 25 steps and the release checkpoint is chosen on the held-out set. Two things we learned and kept: without the register term, RL on fidelity alone makes the model write more "properly" and detector pass rates fall (81 % → 52 %); and training past the point where reuse stops falling only adds fact errors (a ramp weight of 8 instead of 4 gave 7/62 critical errors at step 300).
+
+Training scripts are in `training/` (LoRA SFT, DPO, GRPO with `rl_reward.py` + `textmetrics.py`, candidate generation, the judge prompts, the two-vote judge). Training data is not released because the human side comes from sources with mixed licences.
 
 ## Evaluation
 
 39-case "daily use" set (`eval_daily/`): essays, reports, paper sections, emails, tweets/Reddit/LinkedIn posts, plus 8 Chinese cases; drafts written by Claude Sonnet. Two samples per case.
 
-| metric (62 English samples) | this model | production baseline (Qwen3.5-4B rewriter) |
-|---|---|---|
-| verbatim 5-gram copy, median | 0.15 | 0.12 |
-| samples copying > 35 % of draft | 0 | 33 / 93 |
-| **critical fidelity errors** (judge: reversed meaning, changed number/event) | **10 %** (6/62) | ≈ 30 % |
-| minor / none | 19 / 37 | — |
-| Chinese cases passing the judge | 10 / 16 | 4 / 16 |
-| Originality.ai "human" verdicts *(external check only, never optimised)* | **49 / 62 = 79 %** | 53 / 93 = 57 % |
+Fidelity is graded by two independent judges (GLM-5.3 and gpt-5.6) and an error counts only if both report it; v1 is re-graded under the same protocol so the columns are comparable.
 
-Human-written originals from the training genres score 9/9 "human" on the same detector; the draft inputs score ≈ 0/62. Weakest genres are paper sections (3/6) and reports (5/8).
+| metric (62 English samples) | **v2 (SFT + DPO + GRPO)** | v1 (SFT + DPO) | production baseline (Qwen3.5-4B rewriter) |
+|---|---|---|---|
+| verbatim 5-gram copy, median | 0.14 | 0.15 | 0.12 |
+| reuse (verbatim ∨ syntactic skeleton), median | **0.29** | 0.34 | — |
+| samples copying > 35 % of draft | 0 | 1 | 33 / 93 |
+| **critical fidelity errors** (reversed meaning, changed number/event) | **0 / 62** | 3 / 62 | ≈ 30 % |
+| minor / none | 20 / 42 | 15 / 44 | — |
+| format element dropped (subject line, heading, list, sign-off) | **5 / 62** | 12 / 62 | — |
+| Chinese cases passing the judge | **13 / 16** | 11 / 16 | 4 / 16 |
+| Originality.ai "human" verdicts *(external check only, never optimised)* | **53 / 62 = 85 %** | 50 / 62 = 81 % | 53 / 93 = 57 % |
+
+Human-written originals from the training genres score 9/9 "human" on the same detector; the draft inputs score ≈ 0/62. v2's weakest genres are social posts (5/8), paper sections (4/6) and reports (6/8); email is 10/10.
 
 ### Known failure modes (please read before relying on it)
 
-* About 1 in 10 outputs contains a **meaning flip** that a careful reader would catch: who recommends what ("leadership recommends" → "we recommend to leadership"), an event ("received on Aug 30" → "ordered on Aug 30"), a metric ("ridership rose 12 %" → "ride time rose 12 %"), a comparison reversed, or an invented "as requested". Always proofread numbers, dates and the direction of every claim.
-* Subject lines and formal greetings are occasionally dropped.
-* Chinese is weaker than English (10/16).
+* **Meaning flips** (who recommends what, "received" → "ordered", a metric renamed, a comparison reversed) were the v1 failure mode (~1 in 10). v2 shows none on the 62-sample set, but the set is small: always proofread numbers, dates and the direction of every claim.
+* v2's remaining errors are **dropped qualifiers**: "an estimated 4.2 %" → "4.2 %", "these results suggest" → "we conclude", "12 hours or more" → "more than 12 hours". About 1 in 3 outputs has one such shift.
+* Rewrites are deeper than v1; very occasionally a sentence comes out garbled ("from thousands to thousands"). Resample if it reads wrong.
+* Chinese is weaker than English (13/16).
 * Drafts under ~120 words are rewritten less reliably.
 
 ## Samples
@@ -111,7 +118,7 @@ One English and one Chinese example; more in [docs/samples.md](docs/samples.md).
 
 ### GGUF (llama.cpp, Ollama, LM Studio, llama-cpp-python) — recommended
 
-Files in the `gguf/` folder of `jialinyyzz/humanizer-gemma-4-e4b`: `Q8_0` (8.0 GB), `Q6_K` (6.2 GB) and `bf16` (14.9 GB). Q8_0 and Q6_K are within judge noise of bf16 on fidelity. **Q5_K_M and Q4_K_M are not published**: Q5_K_M triples critical fidelity errors (17/62 vs 6) and Q4_K_M degenerates into gibberish on this model, like the MLX 4-bit builds (see `docs/QUALITY.md`).
+Files in the `gguf/` folder of `jialinyyzz/humanizer-gemma-4-e4b`: `Q8_0` (8.0 GB), `Q6_K` (6.2 GB) and `bf16` (14.9 GB). Q8_0 and Q6_K are within judge noise of bf16 on fidelity (measured on v1; v2 quants use the same recipe). **Q5_K_M and Q4_K_M are not published**: Q5_K_M triples critical fidelity errors (17/62 vs 6) and Q4_K_M degenerates into gibberish on this model, like the MLX 4-bit builds (see `docs/QUALITY.md`).
 
 ```bash
 pip install llama-cpp-python        # CMAKE_ARGS="-DGGML_METAL=on" (Mac) or "-DGGML_CUDA=on"
@@ -147,10 +154,10 @@ Generation stops at EOS. Sampling: temperature 0.85, top-p 0.95.
 
 ## Weights
 
-* `jialinyyzz/humanizer-gemma-4-e4b` — one repo holds every variant: merged bf16 in transformers format at the root (SFT + DPO merged into the base), and llama.cpp GGUF files (Q8_0, Q6_K, bf16; Q5_K_M and Q4_K_M withheld — fidelity collapses below 6-bit) plus `prompt_format.json` under `gguf/`.
+* `jialinyyzz/humanizer-gemma-4-e4b` — one repo holds every variant: merged bf16 in transformers format at the root (SFT + DPO + GRPO merged into the base), and llama.cpp GGUF files (Q8_0, Q6_K, bf16; Q5_K_M and Q4_K_M withheld — fidelity collapses below 6-bit) plus `prompt_format.json` under `gguf/`. The current files are **v2**; v1 (SFT + DPO only) remains available from the repo's commit history.
 
 Both derive from `google/gemma-4-E4B` and are provided under the Gemma Terms of Use (see `NOTICE`). Code in this repository is Apache-2.0.
 
 ## Reproducing
 
-`training/train_sft2.py` (LoRA r=16 on the language tower, 1 epoch, effective batch 16), then `training/gen_candidates.py` → `training/build_prefs.py --tiers --identity-bad` (needs a GLM API key in `~/.config/zai_key`) → `training/train_dpo.py` (β=0.1, lr 5e-6, 1 epoch). Evaluation: `training/gen_cases.py` with `COPY_PENALTY=2 COPY_N=5 ADAPTIVE_COPY=1 ADAPTIVE_THR=0.35`, then `training/glm_eval_en.py` / `glm_eval_zh.py`.
+`training/train_sft2.py` (LoRA r=16 on the language tower, 1 epoch, effective batch 16), then `training/gen_candidates.py` → `training/build_prefs.py --tiers --identity-bad` (needs a GLM API key in `~/.config/zai_key`) → `training/train_dpo.py` (β=0.1, lr 5e-6, 1 epoch), then `training/train_grpo.py` (GRPO, 300 steps, 8 samples × 2 drafts per step, lr 5e-6, reward in `training/rl_reward.py` with `W_COPY=4`; keep every 25th checkpoint and pick on the held-out set). `training/export_merged_gguf.sbatch` merges the three LoRAs into the base and builds the GGUF files. Evaluation: `training/gen_cases.py` with `COPY_PENALTY=2 COPY_N=5 ADAPTIVE_COPY=1 ADAPTIVE_THR=0.35`, then `training/glm_eval_en.py` / `glm_eval_zh.py`.

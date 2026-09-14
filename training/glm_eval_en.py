@@ -4,13 +4,16 @@
 import argparse,json,os,re,sys
 from concurrent.futures import ThreadPoolExecutor
 sys.path.insert(0,os.path.dirname(os.path.abspath(__file__)))
-from llm_http import zai
-ap=argparse.ArgumentParser(); ap.add_argument('--tag',required=True); ap.add_argument('--cases',required=True); ap.add_argument('--workers',type=int,default=6); a=ap.parse_args()
+from llm_http import zai, luna
+from judge_consensus import merge
+ap=argparse.ArgumentParser(); ap.add_argument('--tag',required=True); ap.add_argument('--cases',required=True); ap.add_argument('--workers',type=int,default=6); ap.add_argument('--votes',type=int,default=2,help='判几次取一致(09-12:单判两次只有 61-77%% 一致,臂间差和噪声同量级)'); ap.add_argument('--second',default='luna',choices=['luna','glm','none'],help='第二票用哪个模型。默认 luna(gpt-5.6-luna):同一个模型判两遍共享同样的系统偏差,跨模型才是真的两票;而且 RL 在线时不抢 GLM 配额')
+ap.add_argument('--limit',type=int,default=0,help='只判前 N 条,冒烟用')
+a=ap.parse_args()
 ROOT=os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 P='''You are a strict reviewer. DRAFT is the original text; OUTPUT is a rewrite that must keep every fact. Output ONLY JSON:
-{"facts_all_kept": true/false, "meaning_changed": true/false, "added_content": true/false, "greeting_signoff_kept": true/false, "identity": true/false, "reads_like_person": 1-5, "severity": "critical" | "minor" | "none", "evidence": "<=40 words naming the worst problem, or 'none'"}
-severity (judge only what matters to a reader who relies on the text): "critical" = a fact reversed or contradicted; a number, name, date, amount, or deadline changed or dropped; an invented fact, claim, quote, promise, or reason; a request, decision, action item, or who-did-what changed or lost; a completed action turned into an intention (or the reverse); language switched; text truncated. "minor" = only hedging or emphasis shifted (suggests -> shows, mostly -> all, most trusted -> the one trusted), a boundary softened (at least 200 -> more than 200), synonyms with slightly different flavor, added connectives or framing sentences that carry no new facts, reordering. "none" = faithful. Dropping or changing a subject line, greeting, sign-off, signature or contact line is NOT critical and NOT minor for severity purposes (report it only through greeting_signoff_kept).
-facts_all_kept: every fact, number, name, date, claim and request of DRAFT appears in OUTPUT (rewording is fine). meaning_changed: OUTPUT states something DRAFT does not (a reversed condition, a claim made stronger/weaker, an opinion turned into a fact, a lost statistical qualifier such as 'significant'). added_content: OUTPUT contains facts, examples, numbers or sentences with new information not in DRAFT (pure connectives do not count). greeting_signoff_kept: if DRAFT has a greeting/sign-off, OUTPUT keeps them. identity: OUTPUT is essentially a copy of DRAFT. reads_like_person: 5 = a competent person clearly wrote it, 1 = obviously machine text.
+{"facts_all_kept": true/false, "meaning_changed": true/false, "added_content": true/false, "greeting_signoff_kept": true/false, "format_kept": true/false, "identity": true/false, "reads_like_person": 1-5, "severity": "critical" | "minor" | "none", "evidence": "<=40 words naming the worst problem, or 'none'"}
+severity: judge by whether a reader acting on the text would be misled. "critical" = a fact reversed or contradicted; a number, name, date, amount or deadline changed or dropped; who-did-what or who-asks-whom changed; a completed action turned into an intention or the reverse; a request, decision or action item lost; an invented fact or quote; language switched; text truncated. "minor" = the output loses a concrete detail or shifts a quantified boundary without breaking the main fact (a dropped specific such as "timestamps display in UTC", a changed boundary or frequency such as "at least 200" -> "more than 200" or "doubles in 4 to 6 hours" -> "doubles every 4-6 hours", a dropped statistical qualifier such as "significantly", or an open question stated as an established finding). "none" = faithful. **Do NOT report any of these as an error**: synonym substitution that preserves meaning ("largest" -> "most significant", "provides evidence" -> "offers evidence", "biggest shock" -> "scariest thing"); shifts in politeness, warmth or emotional emphasis ("would prefer" -> "would much prefer", "impressed" -> "extremely impressed"); sentence restructuring, merging, splitting or reordering; register choices such as contractions, slang, informal punctuation or their absence; changing voice; re-expressing a number in an equivalent form. Only flag a wording change when it alters what is true, how certain it is, or how much there is. Subject line, greeting, sign-off and signature are judged only through format_kept / greeting_signoff_kept, never through severity.
+facts_all_kept: every fact, number, name, date, claim and request of DRAFT appears in OUTPUT (rewording is fine). meaning_changed: OUTPUT states something DRAFT does not (a reversed condition, a claim made stronger/weaker, an opinion turned into a fact, a lost statistical qualifier such as 'significant'). added_content: OUTPUT contains facts, examples, numbers or sentences with new information not in DRAFT (pure connectives do not count). greeting_signoff_kept: if DRAFT has a greeting/sign-off, OUTPUT keeps them. format_kept: OUTPUT keeps DRAFT's document format — subject line and title present, numbered/bulleted lists stay lists, paragraph breaks are not collapsed into one block, section headers kept, no stray markup such as <p> (true if DRAFT has none of these); reordering is fine, and rewording a subject line or sign-off is fine as long as the element is still there. identity: OUTPUT is essentially a copy of DRAFT. reads_like_person: 5 = a competent person clearly wrote it, 1 = obviously machine text.
 DRAFT:
 """{d}"""
 OUTPUT:
@@ -21,23 +24,34 @@ jobs=[]
 for c in en:
     draft=open(f'{ROOT}/{a.cases}/{c}.txt').read().strip()
     for i,r in enumerate(d[c]): jobs.append((c,i,draft,r['text']))
+def _once(draft,out,second=False):
+    q=P.replace('{d}',draft).replace('{o}',out)
+    t=(luna(q) if (second and a.second=='luna') else zai(q,model='glm-5.3',max_tokens=400,timeout=240)) or ''
+    m=re.search(r'\{.*\}',t,re.S)
+    try:
+        v=json.loads(m.group(0))
+        if second and a.second=='luna': v['_by']='luna'
+        return v
+    except Exception: return None
 def judge(j):
     c,i,draft,out=j
-    t=zai(P.replace('{d}',draft).replace('{o}',out),model='glm-5.3',max_tokens=400,timeout=240) or ''
-    m=re.search(r'\{.*\}',t,re.S)
-    try: v=json.loads(m.group(0))
-    except Exception: v=None
+    v=_once(draft,out)
+    if a.votes>1 and a.second!='none':
+        v=merge(v,_once(draft,out,second=True))
     return dict(case=c,i=i,verdict=v)
+if a.limit: jobs=jobs[:a.limit]
 with ThreadPoolExecutor(a.workers) as ex: res=list(ex.map(judge,jobs))
 ok=[r for r in res if r['verdict']]
-fk=sum(1 for r in ok if r['verdict'].get('facts_all_kept')); mc=sum(1 for r in ok if r['verdict'].get('meaning_changed')); ad=sum(1 for r in ok if r['verdict'].get('added_content'))
-gs=sum(1 for r in ok if r['verdict'].get('greeting_signoff_kept') is False); idn=sum(1 for r in ok if r['verdict'].get('identity'))
+fak=sum(1 for r in ok if r['verdict'].get('facts_all_kept')); mc=sum(1 for r in ok if r['verdict'].get('meaning_changed')); ad=sum(1 for r in ok if r['verdict'].get('added_content'))
+gs=sum(1 for r in ok if r['verdict'].get('greeting_signoff_kept') is False); fk=sum(1 for r in ok if r['verdict'].get('format_kept') is False); idn=sum(1 for r in ok if r['verdict'].get('identity'))
 ppl=[r['verdict'].get('reads_like_person') or 0 for r in ok]
 clean=sum(1 for r in ok if r['verdict'].get('facts_all_kept') and not r['verdict'].get('meaning_changed') and not r['verdict'].get('added_content'))
-json.dump(res,open(f'{ROOT}/eval/fidelity_{a.tag}.json','w'),ensure_ascii=False,indent=1)
+_out=f'{ROOT}/eval/fidelity_{a.tag}.json' if not a.limit else f'{ROOT}/eval/fidelity_{a.tag}_limit{a.limit}.json'  # 09-12:--limit 曾把完整结果文件截成 6 条,别再覆盖
+json.dump(res,open(_out,'w'),ensure_ascii=False,indent=1)
+single=sum(1 for r in ok if r['verdict'].get('_votes')==1)
 crit=sum(1 for r in ok if r['verdict'].get('severity')=='critical'); mino=sum(1 for r in ok if r['verdict'].get('severity')=='minor')
 print(f'{a.tag} 严重错 {crit} | 轻微 {mino} | 无 {len(ok)-crit-mino}')
-print(f'{a.tag} 英文 {len(ok)}/{len(res)} 判成功 | 事实全保 {fk} | 意思被改 {mc} | 添加内容 {ad} | 丢问候落款 {gs} | 恒等 {idn} | 三项全干净 {clean} | 像人均分 {sum(ppl)/max(1,len(ppl)):.2f}')
+print(f'{a.tag} 英文 {len(ok)}/{len(res)} 判成功 | 事实全保 {fak} | 意思被改 {mc} | 添加内容 {ad} | 丢问候落款 {gs} | 丢格式 {fk} | 恒等 {idn} | 三项全干净 {clean} | 单票判定 {single}')
 for r in ok:
     v=r['verdict']
     if v.get('meaning_changed') or not v.get('facts_all_kept') or v.get('added_content'): print(f"  {r['case']}#{r['i']}: {v.get('evidence','')[:110]}")

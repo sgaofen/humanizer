@@ -47,20 +47,45 @@ GGUF files (Q8_0 / Q6_K / bf16; Q5_K_M withheld at 17/62 critical errors, Q4_K_M
 
 Known failure modes (v2): dropped qualifiers in about 1 in 3 outputs ("an estimated 4.2 %" → "4.2 %", "suggest" → "conclude"); meaning flips were v1's main failure (~1 in 10) and did not appear in v2's 62 samples, but the set is small; an occasional garbled sentence — resample; Chinese weaker than English (13/16); short drafts (< 120 words) less reliable. **Proofread numbers, dates and the direction of every claim.** GGUF fidelity numbers in `docs/QUALITY.md` were measured on v1; v2 quants were built with the same recipe.
 
-## Prompt format (must match exactly)
+## Prompt format (base-model completion — NOT a chat model)
 
-Base-model continuation, not chat. `prompt_format.json` in this repo holds the instruction and separator:
+No system prompt, no chat template, no turn markers. Hand it this exact text and let it continue:
 
 ```
-{instr}
+Rewrite the text below so it reads like a person wrote it, not a language model.
 
-{draft}
+Reorganize it as you see fit. Vary sentence length on purpose. Cut hedging,
+throat-clearing, and any sentence that only announces what comes next.
+Prefer the concrete word over the abstract one. It is fine to sound uneven.
+
+Every fact, number, unit, date, name and quotation must survive unchanged.
+
+<YOUR DRAFT GOES HERE>
 
 ### Rewritten:
 
 ```
 
-Stop at EOS; temperature 0.85, top-p 0.95.
+Instruction and separator ship verbatim in `prompt_format.json` in this repo (`instr`, `sep`; the separator is
+literally `\n\n### Rewritten:\n\n` — keep the blank line after it). Reproduce byte for byte; the model was
+trained on this wrapper and a paraphrased instruction measurably degrades it.
+
+Stop at EOS; temperature 0.85, top-p 0.95, ~900 new tokens.
+
+**Ollama / LM Studio apply the base model's chat template by default and that breaks the format.** Turn it off —
+for Ollama, a Modelfile that passes the prompt through untouched:
+
+```
+FROM ./humanizer-gemma-4-e4b-Q8_0.gguf
+TEMPLATE """{{ .Prompt }}"""
+PARAMETER temperature 0.85
+PARAMETER top_p 0.95
+PARAMETER num_predict 900
+```
+
+then send the whole block above as one prompt. Our own llama.cpp path is `humanizer/gguf_infer.py` on GitHub
+(builds the prompt from `prompt_format.json`, plus the anti-copy guard); the Modelfile is the hand-rolled
+equivalent and is untested by us.
 
 ## Usage
 

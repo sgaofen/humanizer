@@ -138,20 +138,46 @@ python humanizer/hf_infer.py --model jialinyyzz/humanizer-gemma-4-e4b draft.txt
 
 `humanizer/mlx_nocopy_server.py` + `humanizer/humanize.py` 用合并后的 bf16 权重起服务并带守卫。注意:mlx_lm 的 Gemma 4 加载器会拒绝 HF 权重里 18 个共用 KV 层的 54 个无用 k/v 张量,加载前要去掉 `layers.24–41.self_attn.(k_proj|v_proj|k_norm)`。这个模型的 MLX 4/6 比特量化不可用(见 `docs/QUALITY.md`),Mac 上请用 GGUF 量化版。
 
-### 提示格式
+### 提示词格式 —— 先读这一段
 
-模型是基座续写,不是聊天模型。确切的提示词随权重附在 `prompt_format.json` 里,必须逐字复现:
+这是一个**基座续写模型,不是聊天模型**:没有 system prompt,没有 chat template,没有 `<start_of_turn>` 之类的回合标记。
+你要把下面这段原样喂给它,让它接着写:
 
 ```
-<指令(6 行,见 prompt_format.json)>
+Rewrite the text below so it reads like a person wrote it, not a language model.
 
-<草稿>
+Reorganize it as you see fit. Vary sentence length on purpose. Cut hedging,
+throat-clearing, and any sentence that only announces what comes next.
+Prefer the concrete word over the abstract one. It is fine to sound uneven.
+
+Every fact, number, unit, date, name and quotation must survive unchanged.
+
+<你的草稿放这里>
 
 ### Rewritten:
 
 ```
 
-生成到 EOS 停止。采样:temperature 0.85,top-p 0.95。
+指令和分隔符原样放在权重旁边的 `prompt_format.json` 里(字段 `instr` 和 `sep`;分隔符就是
+`\n\n### Rewritten:\n\n`,注意后面那个空行)。**必须逐字节复刻** —— 模型就是在这个包装上训练的,
+改写指令措辞或少一个空行都会实测变差。
+
+生成到 EOS 停。采样:temperature 0.85,top-p 0.95,约 900 个新 token。
+
+**用 Ollama / LM Studio 的注意**:这两个默认会套上基座的 chat template,把你的文本包进回合标记里,格式就废了。
+要关掉。Ollama 的 Modelfile 这样写(原样透传提示词):
+
+```
+FROM ./humanizer-gemma-4-e4b-Q8_0.gguf
+TEMPLATE """{{ .Prompt }}"""
+PARAMETER temperature 0.85
+PARAMETER top_p 0.95
+PARAMETER num_predict 900
+```
+
+然后把上面一整块(指令 + 草稿 + `### Rewritten:`)作为一个提示词发过去。我们自己的 llama.cpp 路径是
+`humanizer/gguf_infer.py`,它从 `prompt_format.json` 拼提示词并带反照抄守卫;上面这个 Modelfile 是等价的手写版,
+**我们没有实测过**。
 
 ## 权重
 

@@ -137,20 +137,49 @@ python humanizer/hf_infer.py --model jialinyyzz/humanizer-gemma-4-e4b draft.txt
 
 `humanizer/mlx_nocopy_server.py` + `humanizer/humanize.py` serve the merged bf16 weights with the guard. Note: mlx_lm's Gemma 4 loader rejects the 54 unused k/v tensors of the 18 shared-KV layers in the HF checkpoint; strip `layers.24–41.self_attn.(k_proj|v_proj|k_norm)` before loading. MLX 4-/6-bit quantisation of this model is not usable (see `docs/QUALITY.md`); use the GGUF quants instead.
 
-### Prompt format
+### Prompt format — read this before anything else
 
-The model is a base-model continuation, not a chat model. The exact prompt is shipped in `prompt_format.json` next to the weights and must be reproduced byte for byte:
+This is a **base-model completion, not a chat model.** There is no system prompt, no chat template,
+no `<start_of_turn>` turn markers. You hand it this exact text and let it continue:
 
 ```
-<instruction (6 lines, see prompt_format.json)>
+Rewrite the text below so it reads like a person wrote it, not a language model.
 
-<draft>
+Reorganize it as you see fit. Vary sentence length on purpose. Cut hedging,
+throat-clearing, and any sentence that only announces what comes next.
+Prefer the concrete word over the abstract one. It is fine to sound uneven.
+
+Every fact, number, unit, date, name and quotation must survive unchanged.
+
+<YOUR DRAFT GOES HERE>
 
 ### Rewritten:
 
 ```
 
-Generation stops at EOS. Sampling: temperature 0.85, top-p 0.95.
+The instruction and the separator are shipped verbatim in `prompt_format.json` beside the weights
+(fields `instr` and `sep`; the separator is literally `\n\n### Rewritten:\n\n`, note the blank line after it).
+**Reproduce them byte for byte** — the model was trained on this exact wrapper, and a paraphrased
+instruction or a missing blank line measurably degrades it.
+
+Generation stops at EOS. Sampling: temperature 0.85, top-p 0.95, ~900 new tokens.
+
+**Ollama / LM Studio users, read this:** both apply the base model's chat template by default, which
+wraps your text in turn markers and breaks the format. Turn it off. For Ollama, a Modelfile that
+passes the prompt through untouched:
+
+```
+FROM ./humanizer-gemma-4-e4b-Q8_0.gguf
+TEMPLATE """{{ .Prompt }}"""
+PARAMETER temperature 0.85
+PARAMETER top_p 0.95
+PARAMETER num_predict 900
+```
+
+then send the whole block above (instruction + draft + `### Rewritten:`) as one prompt. Our own
+llama.cpp path is `humanizer/gguf_infer.py`, which builds the prompt from `prompt_format.json` and
+also applies the anti-copy guard; the Modelfile above is the hand-rolled equivalent and we have not
+tested it ourselves.
 
 ## Weights
 
